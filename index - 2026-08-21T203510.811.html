@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crystal League | Rankings 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0a; --card:#111; --border:#222; --text:#fff; --muted:#888;
+    --accent:#3b82f6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);padding:40px 20px}
+  .container{max-width:1200px;margin:0 auto}
+  h1{font-size:48px;font-weight:800;margin-bottom:8px}
+  .subtitle{color:var(--muted);margin-bottom:40px;font-size:18px}
+  
+  .top3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:50px}
+  .podium{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:30px;cursor:pointer;transition:.2s}
+  .podium:hover{border-color:var(--accent);transform:translateY(-4px)}
+  .rank-badge{font-size:32px;margin-bottom:10px}
+  .podium-name{font-size:22px;font-weight:700;margin-bottom:5px}
+  .podium-elo{color:var(--muted);font-size:16px}
+
+  .toolbar{display:flex;gap:12px;margin-bottom:20px}
+  .input,select{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--text);font-size:15px}
+  .input{flex:1}
+
+  table{width:100%;background:var(--card);border:1px solid var(--border);border-radius:16px;border-collapse:collapse;overflow:hidden}
+  th,td{padding:18px 20px;text-align:left}
+  th{font-size:13px;color:var(--muted);text-transform:uppercase;font-weight:600;border-bottom:1px solid var(--border)}
+  tr{border-top:1px solid var(--border);cursor:pointer;transition:.15s}
+  tr:hover{background:#1a1a1a}
+  .rank{font-weight:800;font-size:18px}
+  .player{display:flex;align-items:center;gap:12px;font-weight:600}
+  .avatar{width:40px;height:40px;border-radius:10px;background:#222;display:grid;place-items:center;font-weight:700}
+
+  .pagination{display:flex;justify-content:space-between;align-items:center;padding:20px;background:var(--card);border:1px solid var(--border);border-radius:0 0 16px 16px;margin-top:-1px}
+  .btn{padding:12px 20px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-weight:600;cursor:pointer}
+  .btn:disabled{opacity:.3;cursor:not-allowed}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  /* Modal */
+  .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:100;align-items:center;justify-content:center}
+  .modal.active{display:flex}
+  .modal-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px;width:600px;max-width:90%}
+  .close{float:right;font-size:28px;cursor:pointer;color:var(--muted)}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-top:20px}
+  .stat-box{background:#1a1a1a;padding:20px;border-radius:12px;text-align:center}
+  .stat-label{color:var(--muted);font-size:13px;margin-bottom:5px}
+  .stat-val{font-size:24px;font-weight:800}
+  
+  @media(max-width:900px){.top3{grid-template-columns:1fr}.hide{display:none}}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Crystal League</h1>
+  <p class="subtitle">Top 30 Jugadores Profesionales • Temporada 2026</p>
+
+  <div class="top3" id="top3"></div>
+
+  <h2 style="font-size:28px;margin-bottom:20px">Ranking Completo</h2>
+  
+  <div class="toolbar">
+    <select id="region" class="input" style="max-width:220px">
+      <option value="all">Todas las Regiones</option>
+      <option value="NA">NA</option>
+      <option value="LATAM">LATAM</option>
+      <option value="EU">EU</option>
+      <option value="ASIA">ASIA</option>
+    </select>
+    <input id="search" class="input" placeholder="Buscar jugador...">
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:80px">#</th>
+        <th>Jugador</th>
+        <th class="hide">Región</th>
+        <th>Win Rate</th>
+        <th>ELO</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <div class="pagination">
+    <button id="prev" class="btn">← Anterior</button>
+    <span id="pageInfo" style="color:var(--muted)"></span>
+    <button id="next" class="btn btn-primary">Siguiente →</button>
+  </div>
+</div>
+
+<!-- Modal Perfil -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <span class="close" onclick="closeModal()">&times;</span>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script>
+const PLAYERS = [
+  {rank:1,name:"XenoCrystal",region:"NA",flag:"🇺🇸",win:78.5,elo:7690,wins:10688,loss:67},
+  {rank:2,name:"VoidShatter",region:"EU",flag:"🇩🇪",win:75.1,elo:6890,wins:7983,loss:65},
+  {rank:3,name:"9wds",region:"LATAM",flag:"🇸🇻",win:74.2,elo:6880,wins:12908,loss:64},
+  {rank:4,name:"NexusBreaker",region:"ASIA",flag:"🇰🇷",win:68.3,elo:2845,wins:176,loss:81},
+  {rank:5,name:"GalleryWalk",region:"NA",flag:"🇨🇦",win:67.8,elo:2810,wins:165,loss:78},
+  {rank:6,name:"PhotonEdge",region:"ASIA",flag:"🇦🇺",win:66.5,elo:2775,wins:158,loss:79},
+  {rank:7,name:"OblivionShard",region:"NA",flag:"🇨🇦",win:65.9,elo:2740,wins:152,loss:78},
+  {rank:8,name:"SynapseX",region:"ASIA",flag:"🇯🇵",win:64.7,elo:2690,wins:148,loss:80},
+  {rank:9,name:"ZeroLag",region:"EU",flag:"🇩🇪",win:63.2,elo:2610,wins:142,loss:82},
+  {rank:10,name:"TitanCrush",region:"EU",flag:"🇫🇷",win:60.8,elo:2500,wins:135,loss:87},
+  {rank:11,name:"FrostByte",region:"NA",flag:"🇺🇸",win:59.4,elo:2450,wins:128,loss:87},
+  {rank:12,name:"ShadowStrike",region:"EU",flag:"🇬🇧",win:58.9,elo:2420,wins:125,loss:87},
+  {rank:13,name:"CrimsonWolf",region:"LATAM",flag:"🇦🇷",win:58.1,elo:2390,wins:122,loss:88},
+  {rank:14,name:"IronVeil",region:"ASIA",flag:"🇨🇳",win:57.6,elo:2360,wins:120,loss:88},
+  {rank:15,name:"BlazeFury",region:"NA",flag:"🇺🇸",win:57.0,elo:2330,wins:118,loss:89},
+  {rank:16,name:"NightRaven",region:"EU",flag:"🇵🇱",win:56.5,elo:2300,wins:115,loss:89},
+  {rank:17,name:"StormBreak",region:"LATAM",flag:"🇨🇱",win:56.0,elo:2270,wins:112,loss:88},
+  {rank:18,name:"QuantumLeap",region:"ASIA",flag:"🇸🇬",win:55.6,elo:2240,wins:110,loss:88},
+  {rank:19,name:"VortexKing",region:"NA",flag:"🇺🇸",win:55.1,elo:2210,wins:108,loss:88},
+  {rank:20,name:"OmegaPulse",region:"EU",flag:"🇳🇱",win:54.7,elo:2180,wins:106,loss:88},
+  {rank:21,name:"SolarFlare",region:"LATAM",flag:"🇨🇴",win:54.3,elo:2150,wins:104,loss:88},
+  {rank:22,name:"DarkMatter",region:"ASIA",flag:"🇰🇷",win:53.9,elo:2120,wins:102,loss:87},
+  {rank:23,name:"SteelTitan",region:"NA",flag:"🇨🇦",win:53.5,elo:2090,wins:100,loss:87},
+  {rank:24,name:"EchoStrike",region:"EU",flag:"🇸🇪",win:53.1,elo:2060,wins:98,loss:87},
+  {rank:25,name:"NovaDrift",region:"LATAM",flag:"🇵🇪",win:52.7,elo:2030,wins:96,loss:86},
+  {rank:26,name:"RiftWalker",region:"ASIA",flag:"🇯🇵",win:52.3,elo:2000,wins:94,loss:86},
+  {rank:27,name:"ThunderBolt",region:"NA",flag:"🇺🇸",win:51.9,elo:1970,wins:92,loss:85},
+  {rank:28,name:"IceBreaker",region:"EU",flag:"🇫🇮",win:51.5,elo:1940,wins:90,loss:85},
+  {rank:29,name:"MagmaCore",region:"LATAM",flag:"🇧🇷",win:51.1,elo:1910,wins:88,loss:84},
+  {rank:30,name:"SkyPiercer",region:"ASIA",flag:"🇹🇭",win:50.7,elo:1880,wins:86,loss:84},
+];
+
+let filtered = [...PLAYERS];
+let page = 1;
+const perPage = 10;
+
+function render(){
+  const totalPages = Math.ceil(filtered.length / perPage);
+  const start = (page-1)*perPage;
+  const data = filtered.slice(start, start+perPage);
+
+  // Top 3
+  document.getElementById('top3').innerHTML = filtered.slice(0,3).map(p=>`
+    <div class="podium" onclick="openProfile(${p.rank})">
+      <div class="rank-badge">${p.rank===1?'🥇':p.rank===2?'🥈':'🥉'}</div>
+      <div class="podium-name">${p.name} ${p.flag}</div>
+      <div class="podium-elo">${p.elo.toLocaleString()} ELO</div>
+    </div>
+  `).join('');
+
+  // Tabla
+  document.getElementById('tbody').innerHTML = data.map(p=>`
+    <tr onclick="openProfile(${p.rank})">
+      <td><div class="rank">#${p.rank}</div></td>
+      <td><div class="player"><div class="avatar">${p.name[0]}</div>${p.name}</div></td>
+      <td class="hide">${p.flag} ${p.region}</td>
+      <td>${p.win}%</td>
+      <td style="font-weight:700">${p.elo.toLocaleString()}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('pageInfo').innerText = `Página ${page} de ${totalPages}`;
+  document.getElementById('prev').disabled = page===1;
+  document.getElementById('next').disabled = page===totalPages;
+}
+
+function filter(){
+  const q = document.getElementById('search').value.toLowerCase();
+  const r = document.getElementById('region').value;
+  filtered = PLAYERS.filter(p=> 
+    (r==='all' || p.region===r) && 
+    p.name.toLowerCase().includes(q)
+  );
+  page=1;
+  render();
+}
+
+function openProfile(rank){
+  const p = PLAYERS.find(x=>x.rank===rank);
+  document.getElementById('modalContent').innerHTML = `
+    <h2 style="font-size:32px;margin-bottom:10px">${p.name} ${p.flag}</h2>
+    <p style="color:var(--muted);margin-bottom:20px">Rank #${p.rank} Global</p>
+    <div class="stats">
+      <div class="stat-box"><div class="stat-label">ELO</div><div class="stat-val">${p.elo.toLocaleString()}</div></div>
+      <div class="stat-box"><div class="stat-label">Win Rate</div><div class="stat-val">${p.win}%</div></div>
+      <div class="stat-box"><div class="stat-label">Victorias</div><div class="stat-val">${p.wins}</div></div>
+      <div class="stat-box"><div class="stat-label">Derrotas</div><div class="stat-val">${p.loss}</div></div>
+    </div>
+  `;
+  document.getElementById('modal').classList.add('active');
+}
+function closeModal(){document.getElementById('modal').classList.remove('active')}
+
+document.getElementById('search').oninput = filter;
+document.getElementById('region').onchange = filter;
+document.getElementById('prev').onclick = ()=>{if(page>1){page--;render()}};
+document.getElementById('next').onclick = ()=>{
+  const totalPages = Math.ceil(filtered.length / perPage);
+  if(page<totalPages){page++;render()}
+};
+
+render();
+</script>
+</body>
+</html>
